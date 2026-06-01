@@ -1,298 +1,132 @@
-\# Zero-Touch IT Operations Platform
+Zero-Touch IT Operations Platform
 
 
 
-\## Overview
+A self-service IT Operations platform designed to automate common IT workflows through an intuitive web portal and API-driven backend services.
 
 
 
-The Zero-Touch IT Operations Platform is an automation-first solution designed to streamline employee lifecycle management, endpoint operations, compliance activities, and operational support workflows.
+The platform enables HR and IT teams to trigger onboarding, offboarding, compliance, and operational workflows without requiring direct interaction with APIs or infrastructure.
 
 
 
-The platform provides a unified interface for HR teams, IT Operations engineers, and support teams to execute common operational processes through self-service workflows and API-driven automation.
+Key Features
 
+HR Onboarding
 
+Employee onboarding requests
 
-The goal is to reduce manual effort, improve consistency, strengthen compliance, and provide operational visibility across the IT environment.
+Automated account provisioning
 
+Group assignment workflows
 
+Device request automation
 
-\---
+IT ticket creation
 
+HR Offboarding
 
+User deprovisioning
 
-\## Key Capabilities
+Access revocation
 
+Group removal
 
+Device recovery workflows
 
-\### HR Onboarding
+Audit logging
 
+Fleet Reliability \& Compliance
 
+Device compliance monitoring
 
-Automates new employee provisioning workflows including:
+Security posture validation
 
+Patch management workflows
 
+Compliance reporting
 
-\* Employee creation
+Audit evidence generation
 
-\* Department assignment
+Observability \& SaaS Governance
 
-\* Role-based access provisioning
+SaaS discovery
 
-\* Manager assignment
+Telemetry collection
 
-\* Workflow tracking
+Operational visibility
 
+Workflow tracking
 
+Tier 3 Operations Automation
 
-\### HR Offboarding
+Escalation workflows
 
+Standard Operating Procedure (SOP) execution
 
+Automated remediation actions
 
-Provides a structured offboarding process including:
+Architecture
 
 
 
-\* Account deprovisioning
+Streamlit Self-Service Portal
 
-\* Ownership transfer workflows
+&#x20;           │
 
-\* Access removal
+&#x20;           ▼
 
-\* Audit trail generation
+&#x20;       FastAPI
 
+&#x20;           │
 
+&#x20;           ▼
 
-\### Fleet Reliability \& Compliance
+&#x20;  Automation Workflows
 
+&#x20;           │
 
+&#x20;           ▼
 
-Helps maintain endpoint health and operational readiness through:
+&#x20;Azure Kubernetes Service
 
+&#x20;           │
 
+&#x20;           ▼
 
-\* Automated patch management
+&#x20;Monitoring \& Compliance
 
-\* Device posture validation
 
-\* Compliance verification
 
-\* Drift detection and remediation
+Technology Stack
 
-\* Endpoint remediation workflows
+Python
 
+FastAPI
 
+Streamlit
 
-\### Observability \& Data Integrity
+Docker
 
+Azure Container Registry (ACR)
 
+Azure Kubernetes Service (AKS)
 
-Provides operational visibility through:
+GitHub Actions
 
+Kubernetes
 
+REST APIs
 
-\* SaaS discovery
+Project Goals
 
-\* Fleet telemetry
+Reduce manual operational tasks
 
-\* Security coverage reporting
+Improve IT service delivery
 
-\* Health monitoring
+Enable self-service workflows
 
-\* Executive reporting
+Strengthen compliance and audit readiness
 
-
-
-\### Tier 3 Escalation \& Standard Operating Procedures
-
-
-
-Supports advanced operational workflows through:
-
-
-
-\* Tier 3 escalation management
-
-\* Standard Operating Procedure (SOP) automation
-
-\* Endpoint diagnostics
-
-\* Identity troubleshooting workflows
-
-\* Operational runbooks
-
-
-
-\---
-
-
-
-\## Architecture
-
-
-
-User Interface (Streamlit)
-
-
-
-↓
-
-
-
-REST API Layer (FastAPI)
-
-
-
-↓
-
-
-
-Automation Workflows
-
-
-
-↓
-
-
-
-Identity, Endpoint and Operational Integrations
-
-
-
-↓
-
-
-
-Audit \& Reporting
-
-
-
-\---
-
-
-
-\## Technology Stack
-
-
-
-\### Application Layer
-
-
-
-\* Python
-
-\* FastAPI
-
-\* Streamlit
-
-
-
-\### Container Platform
-
-
-
-\* Docker
-
-
-
-\### Cloud Platform
-
-
-
-\* Microsoft Azure
-
-\* Azure Kubernetes Service (AKS)
-
-\* Azure Container Registry (ACR)
-
-
-
-\### DevOps \& Operations
-
-
-
-\* Git
-
-\* REST APIs
-
-\* Infrastructure Automation
-
-\* Operational Workflows
-
-
-
-\---
-
-
-
-\## Deployment
-
-
-
-The platform is containerized using Docker and deployed to Azure Kubernetes Service (AKS).
-
-
-
-Current deployment includes:
-
-
-
-\* Containerized FastAPI services
-
-\* Azure Container Registry image management
-
-\* Kubernetes Deployments
-
-\* Kubernetes Services
-
-\* Multi-replica application deployment
-
-
-
-\---
-
-
-
-\## Project Goals
-
-
-
-\* Reduce manual IT operational tasks
-
-\* Standardize employee lifecycle processes
-
-\* Improve endpoint compliance
-
-\* Increase operational visibility
-
-\* Enable automation-first IT Operations
-
-\* Support scalable operational workflows
-
-
-
-\---
-
-
-
-\## Future Enhancements
-
-
-
-\* GitHub Actions CI/CD
-
-\* GitOps deployment model
-
-\* Real JumpCloud integration
-
-\* Real Google Workspace integration
-
-\* RBAC and authentication
-
-\* Metrics and dashboards
-
-\* AI-assisted operational troubleshooting
-
-
+Create a scalable platform for IT Operations automation
 
