@@ -2,6 +2,18 @@ Zero-Touch IT Operations Platform
 
 
 
+\# Zero-Touch IT Operations Platform
+
+
+
+!\[Platform Overview](screenshots/docs-zero-touch-it-ops-platform-overview.png)
+
+
+
+A self-service IT Operations platform designed to automate common IT workflows through an intuitive web portal and API-driven backend services.
+
+
+
 A self-service IT Operations platform designed to automate common IT workflows through an intuitive web portal and API-driven backend services.
 
 
@@ -96,7 +108,7 @@ Streamlit Self-Service Portal
 
 &#x20;Monitoring \& Compliance
 
-
+.
 
 Technology Stack
 
