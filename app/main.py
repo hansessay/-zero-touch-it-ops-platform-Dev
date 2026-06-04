@@ -1,6 +1,18 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from app.workflows.onboarding import run_onboarding
+from app.workflows.offboarding import run_offboarding
+from app.workflows.saas_governance import discover_saas_apps, license_governance
+from app.workflows.audit_readiness import generate_audit_report
+from app.workflows.tier3_remediation import remediate_device
+
+from app.workflows.compliance import (
+    fleet_compliance,
+    identity_compliance
+)
+
+
 app = FastAPI(
     title="Zero-Touch IT Operations Platform",
     version="0.1.0"
@@ -52,6 +64,11 @@ class SOPRunRequest(BaseModel):
     affected_device: str
 
 
+class EndpointRemediationRequest(BaseModel):
+    hostname: str
+    issue: str
+
+
 @app.get("/")
 def root():
     return {"message": "Zero-Touch IT Operations Platform API"}
@@ -64,39 +81,12 @@ def health():
 
 @app.post("/onboarding/start")
 def start_onboarding(request: OnboardingRequest):
-    return {
-        "status": "success",
-        "message": "Onboarding workflow started",
-        "employee": request.dict(),
-        "actions": [
-            "Create identity account",
-            "Assign department groups",
-            "Apply RBAC role",
-            "Provision SaaS access",
-            "Create device record",
-            "Write audit log"
-        ]
-    }
+    return run_onboarding(request)
 
 
 @app.post("/offboarding/start")
 def start_offboarding(request: OffboardingRequest):
-    return {
-        "status": "success",
-        "message": "Offboarding workflow started",
-        "employee_email": request.employee_email,
-        "manager_email": request.manager_email,
-        "reason": request.reason,
-        "transfer_ownership_to": request.transfer_ownership_to,
-        "actions": [
-            "Disable account",
-            "Remove user from groups",
-            "Revoke SaaS access",
-            "Transfer file ownership",
-            "Lock endpoint device",
-            "Write audit log"
-        ]
-    }
+    return run_offboarding(request)
 
 
 @app.post("/fleet/patching")
@@ -173,24 +163,6 @@ def generate_audit_evidence(request: AuditEvidenceRequest):
     }
 
 
-@app.get("/observability/saas/discovery")
-def run_saas_discovery():
-    return {
-        "status": "success",
-        "message": "SaaS discovery completed",
-        "unauthorized_apps": ["personal_dropbox", "unknown_ai_tool"],
-        "license_waste": {
-            "unused_licenses": 14,
-            "estimated_monthly_savings": "420 EUR"
-        },
-        "actions": [
-            "Detected unauthorized SaaS usage",
-            "Identified inactive paid licenses",
-            "Generated governance report"
-        ]
-    }
-
-
 @app.get("/observability/telemetry")
 def get_telemetry():
     return {
@@ -244,3 +216,35 @@ def run_sop(request: SOPRunRequest):
         ]
     }
 
+
+@app.post("/tier3/remediate")
+def run_remediation(request: EndpointRemediationRequest):
+    return remediate_device(
+        hostname=request.hostname,
+        issue=request.issue
+    )
+
+
+@app.get("/compliance/fleet")
+def get_fleet_compliance():
+    return fleet_compliance()
+
+
+@app.get("/compliance/identity")
+def get_identity_compliance():
+    return identity_compliance()
+
+
+@app.get("/saas/discovery")
+def run_saas_discovery():
+    return discover_saas_apps()
+
+
+@app.get("/saas/licenses")
+def run_license_governance():
+    return license_governance()
+
+
+@app.get("/audit/report")
+def run_audit_report():
+    return generate_audit_report()

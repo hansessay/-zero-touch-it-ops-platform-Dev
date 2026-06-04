@@ -34,3 +34,16 @@ def transfer_drive_ownership(old_owner: str, new_owner: str):
     }
     write_audit("google_transfer_drive_ownership", "success", result)
     return result
+def create_google_user(first_name: str, last_name: str, email: str, department: str):
+    result = {
+        "system": "Google Workspace",
+        "action": "create_user",
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+        "department": department,
+        "status": "simulated_success"
+    }
+
+    write_audit("google_create_user", "success", result)
+    return result
