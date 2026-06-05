@@ -3,6 +3,7 @@ from app.audit import write_audit
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 
 GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
@@ -117,22 +118,39 @@ def add_user_to_group(user_email: str, group_email: str):
         "role": "MEMBER"
     }
 
-    response = service.members().insert(
-        groupKey=group_email,
-        body=payload
-    ).execute()
+    try:
+        response = service.members().insert(
+            groupKey=group_email,
+            body=payload
+        ).execute()
 
-    result = {
-        "system": "Google Workspace",
-        "action": "add_user_to_group",
-        "user_email": user_email,
-        "group_email": group_email,
-        "status": "completed",
-        "response": response
-    }
+        result = {
+            "system": "Google Workspace",
+            "action": "add_user_to_group",
+            "user_email": user_email,
+            "group_email": group_email,
+            "status": "completed",
+            "response": response
+        }
 
-    write_audit("google_add_user_to_group", "completed", result)
-    return result
+        write_audit("google_add_user_to_group", "completed", result)
+        return result
+
+    except HttpError as e:
+        if e.resp.status == 409:
+            result = {
+                "system": "Google Workspace",
+                "action": "add_user_to_group",
+                "user_email": user_email,
+                "group_email": group_email,
+                "status": "already_exists",
+                "message": "User is already a member of the group"
+            }
+
+            write_audit("google_add_user_to_group", "already_exists", result)
+            return result
+
+        raise
 
 
 def remove_user_from_group(user_email: str, group_email: str):
