@@ -4,10 +4,12 @@ from app.audit import write_audit
 
 
 JUMPCLOUD_API_KEY = os.getenv("JUMPCLOUD_API_KEY")
-JUMPCLOUD_BASE_URL = "https://console.jumpcloud.com/api"
+JUMPCLOUD_BASE_URL = "https://console.jumpcloud.com/api/v2"
 
 
 def _headers():
+    print("JumpCloud API key loaded:", bool(JUMPCLOUD_API_KEY))
+
     return {
         "x-api-key": JUMPCLOUD_API_KEY,
         "Content-Type": "application/json",
@@ -25,18 +27,23 @@ def create_jumpcloud_user(first_name: str, last_name: str, email: str, departmen
     }
 
     response = requests.post(
-        f"{JUMPCLOUD_BASE_URL}/systemusers",
+        "https://console.jumpcloud.com/api/systemusers",
         headers=_headers(),
         json=payload,
         timeout=30
     )
+
+    try:
+        response_body = response.json()
+    except Exception:
+        response_body = response.text
 
     result = {
         "system": "JumpCloud",
         "action": "create_user",
         "email": email,
         "status_code": response.status_code,
-        "response": response.json() if response.text else {}
+        "response": response_body
     }
 
     write_audit("jumpcloud_create_user", "completed", result)
@@ -75,16 +82,21 @@ def get_devices():
 
 def get_users():
     response = requests.get(
-        f"{JUMPCLOUD_BASE_URL}/systemusers",
+        "https://console.jumpcloud.com/api/systemusers",
         headers=_headers(),
         timeout=30
     )
+
+    try:
+        response_body = response.json()
+    except Exception:
+        response_body = response.text
 
     result = {
         "system": "JumpCloud",
         "action": "get_users",
         "status_code": response.status_code,
-        "users": response.json() if response.text else []
+        "users": response_body
     }
 
     write_audit("jumpcloud_get_users", "completed", result)

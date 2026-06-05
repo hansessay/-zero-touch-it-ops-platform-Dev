@@ -16,14 +16,18 @@ SCOPES = [
 
 
 def _directory_service():
+    if not GOOGLE_SERVICE_ACCOUNT_FILE:
+        raise ValueError("GOOGLE_SERVICE_ACCOUNT_FILE environment variable is missing")
+
+    if not GOOGLE_WORKSPACE_ADMIN:
+        raise ValueError("GOOGLE_WORKSPACE_ADMIN environment variable is missing")
+
     credentials = service_account.Credentials.from_service_account_file(
         GOOGLE_SERVICE_ACCOUNT_FILE,
         scopes=SCOPES
     )
 
-    delegated_credentials = credentials.with_subject(
-        GOOGLE_WORKSPACE_ADMIN
-    )
+    delegated_credentials = credentials.with_subject(GOOGLE_WORKSPACE_ADMIN)
 
     return build(
         "admin",
@@ -53,8 +57,8 @@ def create_google_user(first_name: str, last_name: str, email: str, department: 
         "action": "create_user",
         "email": email,
         "department": department,
-        "response": response,
-        "status": "completed"
+        "status": "completed",
+        "response": response
     }
 
     write_audit("google_create_user", "completed", result)
@@ -73,11 +77,35 @@ def suspend_google_user(email: str):
         "system": "Google Workspace",
         "action": "suspend_user",
         "email": email,
-        "response": response,
-        "status": "completed"
+        "status": "completed",
+        "response": response
     }
 
     write_audit("google_suspend_user", "completed", result)
+    return result
+
+
+def reset_google_password(email: str, temporary_password: str = "ChangeMe123!"):
+    service = _directory_service()
+
+    response = service.users().update(
+        userKey=email,
+        body={
+            "password": temporary_password,
+            "changePasswordAtNextLogin": True
+        }
+    ).execute()
+
+    result = {
+        "system": "Google Workspace",
+        "action": "reset_password",
+        "email": email,
+        "status": "completed",
+        "note": "Password reset and user must change password at next login.",
+        "response": response
+    }
+
+    write_audit("google_reset_password", "completed", result)
     return result
 
 
@@ -99,11 +127,57 @@ def add_user_to_group(user_email: str, group_email: str):
         "action": "add_user_to_group",
         "user_email": user_email,
         "group_email": group_email,
-        "response": response,
-        "status": "completed"
+        "status": "completed",
+        "response": response
     }
 
     write_audit("google_add_user_to_group", "completed", result)
+    return result
+
+
+def remove_user_from_group(user_email: str, group_email: str):
+    service = _directory_service()
+
+    response = service.members().delete(
+        groupKey=group_email,
+        memberKey=user_email
+    ).execute()
+
+    result = {
+        "system": "Google Workspace",
+        "action": "remove_user_from_group",
+        "user_email": user_email,
+        "group_email": group_email,
+        "status": "completed",
+        "response": response
+    }
+
+    write_audit("google_remove_user_from_group", "completed", result)
+    return result
+
+
+def list_google_users(domain: str, max_results: int = 50):
+    service = _directory_service()
+
+    response = service.users().list(
+        domain=domain,
+        maxResults=max_results,
+        orderBy="email"
+    ).execute()
+
+    result = {
+        "system": "Google Workspace",
+        "action": "list_users",
+        "domain": domain,
+        "status": "completed",
+        "users": response.get("users", [])
+    }
+
+    write_audit("google_list_users", "completed", {
+        "domain": domain,
+        "count": len(result["users"])
+    })
+
     return result
 
 

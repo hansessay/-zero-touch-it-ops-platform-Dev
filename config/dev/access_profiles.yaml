@@ -1,0 +1,15 @@
+departments:
+  IT:
+    google_group: it@cheikhops.com
+    jumpcloud_policy: IT Security Baseline
+    policy_type: security
+
+  Engineering:
+    google_group: engineering@cheikhops.com
+    jumpcloud_policy: Engineering Device Policy
+    policy_type: device
+
+  HR:
+    google_group: hr@cheikhops.com
+    jumpcloud_policy: HR Access Policy
+    policy_type: access

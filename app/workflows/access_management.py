@@ -1,29 +1,14 @@
 from app.audit import write_audit
+from app.config import load_access_profiles
 from app.integrations.google_workspace import add_user_to_group
 from app.integrations.jumpcloud import apply_policy
 
 
-DEPARTMENT_ACCESS = {
-    "IT": {
-        "google_group": "it@company.com",
-        "jumpcloud_policy": "IT Security Baseline",
-        "policy_type": "security"
-    },
-    "Engineering": {
-        "google_group": "engineering@company.com",
-        "jumpcloud_policy": "Engineering Device Policy",
-        "policy_type": "device"
-    },
-    "HR": {
-        "google_group": "hr@company.com",
-        "jumpcloud_policy": "HR Access Policy",
-        "policy_type": "access"
-    }
-}
-
-
 def assign_department_access(user_email: str, department: str):
-    access_profile = DEPARTMENT_ACCESS.get(department)
+    config = load_access_profiles()
+    departments = config.get("departments", {})
+
+    access_profile = departments.get(department)
 
     if not access_profile:
         result = {

@@ -6,16 +6,24 @@ from app.workflows.offboarding import run_offboarding
 from app.workflows.saas_governance import discover_saas_apps, license_governance
 from app.workflows.audit_readiness import generate_audit_report
 from app.workflows.tier3_remediation import remediate_device
+from app.integrations.google_directory import (
+    create_google_user,
+    suspend_google_user,
+    reset_google_password,
+    add_user_to_group,
+    remove_user_from_group,
+    list_google_users,
+)
 
 from app.workflows.compliance import (
     fleet_compliance,
-    identity_compliance
+    identity_compliance,
 )
 
 
 app = FastAPI(
     title="Zero-Touch IT Operations Platform",
-    version="0.1.0"
+    version="0.1.0",
 )
 
 
@@ -69,6 +77,27 @@ class EndpointRemediationRequest(BaseModel):
     issue: str
 
 
+class GoogleCreateUserRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    department: str
+
+
+class GoogleSuspendUserRequest(BaseModel):
+    email: str
+
+
+class GoogleResetPasswordRequest(BaseModel):
+    email: str
+    temporary_password: str = "ChangeMe123!"
+
+
+class GoogleGroupRequest(BaseModel):
+    user_email: str
+    group_email: str
+
+
 @app.get("/")
 def root():
     return {"message": "Zero-Touch IT Operations Platform API"}
@@ -102,8 +131,8 @@ def run_patch_workflow(request: FleetPatchingRequest):
             "Validate OS update status",
             "Validate third-party software updates",
             "Send patch command to device management platform",
-            "Record patch workflow evidence"
-        ]
+            "Record patch workflow evidence",
+        ],
     }
 
 
@@ -118,8 +147,8 @@ def check_posture(request: PostureCheckRequest):
         "findings": [
             "Disk encryption not verified",
             "Patch level requires review",
-            "Endpoint protection status needs validation"
-        ]
+            "Endpoint protection status needs validation",
+        ],
     }
 
 
@@ -135,8 +164,8 @@ def remediate_posture(request: PostureCheckRequest):
             "Schedule patch update",
             "Validate endpoint protection agent",
             "Re-check desired security baseline",
-            "Write remediation audit log"
-        ]
+            "Write remediation audit log",
+        ],
     }
 
 
@@ -152,14 +181,14 @@ def generate_audit_evidence(request: AuditEvidenceRequest):
             "compliant_devices": 9,
             "non_compliant_devices": 3,
             "logs_available": True,
-            "generated_by": "Zero-Touch IT Operations Platform"
+            "generated_by": "Zero-Touch IT Operations Platform",
         },
         "audit_summary": [
             "Device compliance evidence collected",
             "Patch history reviewed",
             "Endpoint security posture validated",
-            "Workflow logs attached for auditor review"
-        ]
+            "Workflow logs attached for auditor review",
+        ],
     }
 
 
@@ -170,15 +199,15 @@ def get_telemetry():
         "fleet_health": {
             "total_devices": 120,
             "healthy_devices": 104,
-            "at_risk_devices": 16
+            "at_risk_devices": 16,
         },
         "security_agent_coverage": "94%",
         "system_uptime": "99.95%",
         "leadership_summary": [
             "Fleet health is stable",
             "Security coverage requires improvement",
-            "Patch compliance trending upward"
-        ]
+            "Patch compliance trending upward",
+        ],
     }
 
 
@@ -195,8 +224,8 @@ def create_tier3_escalation(request: Tier3EscalationRequest):
             "Validate identity and device state",
             "Review security agent status",
             "Document root cause",
-            "Create reusable SOP if repeated"
-        ]
+            "Create reusable SOP if repeated",
+        ],
     }
 
 
@@ -212,8 +241,8 @@ def run_sop(request: SOPRunRequest):
             "Input validated",
             "Action logged",
             "Rollback path documented",
-            "Support-safe execution completed"
-        ]
+            "Support-safe execution completed",
+        ],
     }
 
 
@@ -221,7 +250,7 @@ def run_sop(request: SOPRunRequest):
 def run_remediation(request: EndpointRemediationRequest):
     return remediate_device(
         hostname=request.hostname,
-        issue=request.issue
+        issue=request.issue,
     )
 
 
@@ -248,3 +277,50 @@ def run_license_governance():
 @app.get("/audit/report")
 def run_audit_report():
     return generate_audit_report()
+
+
+@app.post("/google/users/create")
+def google_create_user_endpoint(request: GoogleCreateUserRequest):
+    return create_google_user(
+        first_name=request.first_name,
+        last_name=request.last_name,
+        email=request.email,
+        department=request.department,
+    )
+
+
+@app.post("/google/users/suspend")
+def google_suspend_user_endpoint(request: GoogleSuspendUserRequest):
+    return suspend_google_user(request.email)
+
+
+@app.post("/google/users/reset-password")
+def google_reset_password_endpoint(request: GoogleResetPasswordRequest):
+    return reset_google_password(
+        email=request.email,
+        temporary_password=request.temporary_password,
+    )
+
+
+@app.post("/google/groups/add-member")
+def google_add_group_member_endpoint(request: GoogleGroupRequest):
+    return add_user_to_group(
+        user_email=request.user_email,
+        group_email=request.group_email,
+    )
+
+
+@app.post("/google/groups/remove-member")
+def google_remove_group_member_endpoint(request: GoogleGroupRequest):
+    return remove_user_from_group(
+        user_email=request.user_email,
+        group_email=request.group_email,
+    )
+
+
+@app.get("/google/users")
+def google_list_users_endpoint(domain: str, max_results: int = 50):
+    return list_google_users(
+        domain=domain,
+        max_results=max_results,
+    )
