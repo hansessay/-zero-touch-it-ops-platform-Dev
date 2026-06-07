@@ -1,3 +1,8 @@
+
+
+from dotenv import load_dotenv
+
+load_dotenv()
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -6,13 +11,12 @@ from app.workflows.offboarding import run_offboarding
 from app.workflows.saas_governance import discover_saas_apps, license_governance
 from app.workflows.audit_readiness import generate_audit_report
 from app.workflows.tier3_remediation import remediate_device
-from app.integrations.google_directory import (
+
+from app.integrations.google_workspace import (
     create_google_user,
     suspend_google_user,
-    reset_google_password,
     add_user_to_group,
-    remove_user_from_group,
-    list_google_users,
+    list_users,
 )
 
 from app.workflows.compliance import (
@@ -86,11 +90,6 @@ class GoogleCreateUserRequest(BaseModel):
 
 class GoogleSuspendUserRequest(BaseModel):
     email: str
-
-
-class GoogleResetPasswordRequest(BaseModel):
-    email: str
-    temporary_password: str = "ChangeMe123!"
 
 
 class GoogleGroupRequest(BaseModel):
@@ -294,14 +293,6 @@ def google_suspend_user_endpoint(request: GoogleSuspendUserRequest):
     return suspend_google_user(request.email)
 
 
-@app.post("/google/users/reset-password")
-def google_reset_password_endpoint(request: GoogleResetPasswordRequest):
-    return reset_google_password(
-        email=request.email,
-        temporary_password=request.temporary_password,
-    )
-
-
 @app.post("/google/groups/add-member")
 def google_add_group_member_endpoint(request: GoogleGroupRequest):
     return add_user_to_group(
@@ -310,17 +301,6 @@ def google_add_group_member_endpoint(request: GoogleGroupRequest):
     )
 
 
-@app.post("/google/groups/remove-member")
-def google_remove_group_member_endpoint(request: GoogleGroupRequest):
-    return remove_user_from_group(
-        user_email=request.user_email,
-        group_email=request.group_email,
-    )
-
-
 @app.get("/google/users")
-def google_list_users_endpoint(domain: str, max_results: int = 50):
-    return list_google_users(
-        domain=domain,
-        max_results=max_results,
-    )
+def google_list_users_endpoint(max_results: int = 50):
+    return list_users(max_results=max_results)

@@ -1,4 +1,4 @@
-import streamlit as st
+2import streamlit as st
 import requests
 
 API_URL = "http://127.0.0.1:8001"
@@ -8,6 +8,7 @@ st.set_page_config(
     page_icon="⚙️",
     layout="wide"
 )
+
 st.title("Zero-Touch IT Operations Platform")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
@@ -16,7 +17,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(
         "HR Offboarding Portal",
         "Fleet Reliability & Compliance",
         "Observability & Data Integrity",
-        "Tier 3 Escalation & SOPs"
+        "Tier 3 Escalation & SOPs",
     ]
 )
 
@@ -24,19 +25,23 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(
 with tab1:
     st.header("Employee Onboarding")
 
-    full_name = st.text_input("Full Name")
-    email = st.text_input("Employee Email")
+    first_name = st.text_input("First Name")
+    last_name = st.text_input("Last Name")
+    employee_email = st.text_input("Employee Email")
     department = st.text_input("Department")
-    role = st.text_input("Role")
+    job_title = st.text_input("Job Title")
     manager_email = st.text_input("Manager Email")
+    location = st.text_input("Location")
 
     if st.button("Create Employee"):
         payload = {
-            "full_name": full_name,
-            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "employee_email": employee_email,
             "department": department,
-            "role": role,
-            "manager_email": manager_email
+            "job_title": job_title,
+            "manager_email": manager_email,
+            "location": location,
         }
 
         response = requests.post(f"{API_URL}/onboarding/start", json=payload)
@@ -52,17 +57,17 @@ with tab1:
 with tab2:
     st.header("Employee Offboarding")
 
-    email = st.text_input("Employee Email", key="off_email")
-    manager_email = st.text_input("Manager Email", key="off_manager")
+    employee_email = st.text_input("Employee Email", key="off_employee_email")
+    manager_email = st.text_input("Manager Email", key="off_manager_email")
     reason = st.selectbox("Reason", ["termination", "resignation", "internal_transfer"])
-    transfer_owner = st.text_input("Transfer ownership to")
+    transfer_ownership_to = st.text_input("Transfer ownership to")
 
     if st.button("Offboard Employee"):
         payload = {
-            "email": email,
+            "employee_email": employee_email,
             "manager_email": manager_email,
             "reason": reason,
-            "transfer_owner": transfer_owner
+            "transfer_ownership_to": transfer_ownership_to,
         }
 
         response = requests.post(f"{API_URL}/offboarding/start", json=payload)
@@ -89,18 +94,18 @@ with tab3:
             "check_patch_status",
             "schedule_os_patch",
             "schedule_third_party_patch",
-            "force_patch_now"
-        ]
+            "force_patch_now",
+        ],
     )
 
     if st.button("Run Patch Workflow"):
         payload = {
             "hostname": hostname,
             "os": os_type,
-            "issue": patch_action
+            "action": patch_action,
         }
 
-        response = requests.post(f"{API_URL}/fleet/patch", json=payload)
+        response = requests.post(f"{API_URL}/fleet/patching", json=payload)
 
         if response.status_code == 200:
             st.success("Patch workflow executed")
@@ -121,8 +126,8 @@ with tab3:
             "standard_employee",
             "engineering",
             "privileged_admin",
-            "remote_worker"
-        ]
+            "remote_worker",
+        ],
     )
 
     col1, col2 = st.columns(2)
@@ -131,7 +136,7 @@ with tab3:
         if st.button("Check Desired State"):
             payload = {
                 "hostname": posture_hostname,
-                "baseline": baseline
+                "baseline": baseline,
             }
 
             response = requests.post(f"{API_URL}/fleet/posture/check", json=payload)
@@ -147,7 +152,7 @@ with tab3:
         if st.button("Remediate Drift"):
             payload = {
                 "hostname": posture_hostname,
-                "baseline": baseline
+                "baseline": baseline,
             }
 
             response = requests.post(f"{API_URL}/fleet/posture/remediate", json=payload)
@@ -165,7 +170,7 @@ with tab3:
 
     audit_framework = st.selectbox(
         "Audit Framework",
-        ["SOC2", "ISO27001", "Internal Security Review"]
+        ["SOC2", "ISO27001", "Internal Security Review"],
     )
 
     evidence_type = st.selectbox(
@@ -175,14 +180,14 @@ with tab3:
             "patch_history",
             "access_review",
             "endpoint_security",
-            "workflow_logs"
-        ]
+            "workflow_logs",
+        ],
     )
 
     if st.button("Generate Audit Evidence"):
         payload = {
             "framework": audit_framework,
-            "evidence_type": evidence_type
+            "evidence_type": evidence_type,
         }
 
         response = requests.post(f"{API_URL}/fleet/audit/evidence", json=payload)
@@ -194,18 +199,6 @@ with tab3:
             st.error("Audit evidence generation failed")
             st.write(response.text)
 
-    st.divider()
-
-    st.subheader("Workflow History")
-
-    if st.button("Refresh Workflow History"):
-        response = requests.get(f"{API_URL}/workflows/history")
-
-        if response.status_code == 200:
-            st.json(response.json())
-        else:
-            st.error("Could not load workflow history")
-            st.write(response.text)
 
 with tab4:
     st.header("Observability & Data Integrity")
@@ -213,7 +206,8 @@ with tab4:
     st.subheader("SaaS Discovery")
 
     if st.button("Run SaaS Discovery"):
-        response = requests.get(f"{API_URL}/observability/saas/discovery")
+        response = requests.get(f"{API_URL}/saas/discovery")
+
         if response.status_code == 200:
             st.success("SaaS discovery completed")
             st.json(response.json())
@@ -226,6 +220,7 @@ with tab4:
 
     if st.button("Get Fleet Telemetry"):
         response = requests.get(f"{API_URL}/observability/telemetry")
+
         if response.status_code == 200:
             st.success("Telemetry loaded")
             st.json(response.json())
@@ -245,8 +240,8 @@ with tab5:
             "identity_access_issue",
             "security_agent_failure",
             "device_enrollment_failure",
-            "unknown_complex_issue"
-        ]
+            "unknown_complex_issue",
+        ],
     )
 
     affected_user = st.text_input("Affected User Email")
@@ -256,12 +251,12 @@ with tab5:
         payload = {
             "issue_type": issue_type,
             "affected_user": affected_user,
-            "affected_device": affected_device
+            "affected_device": affected_device,
         }
 
         response = requests.post(
             f"{API_URL}/tier3/escalation",
-            json=payload
+            json=payload,
         )
 
         if response.status_code == 200:
@@ -281,20 +276,20 @@ with tab5:
             "re_enroll_device",
             "restart_security_agent",
             "collect_device_diagnostics",
-            "validate_access_groups"
-        ]
+            "validate_access_groups",
+        ],
     )
 
     if st.button("Run Safe SOP Automation"):
         payload = {
             "sop_name": sop_name,
             "affected_user": affected_user,
-            "affected_device": affected_device
+            "affected_device": affected_device,
         }
 
         response = requests.post(
             f"{API_URL}/tier3/sop/run",
-            json=payload
+            json=payload,
         )
 
         if response.status_code == 200:

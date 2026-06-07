@@ -1,5 +1,5 @@
 from app.audit import write_audit
-from app.integrations.google_directory import create_google_user
+from app.integrations.google_workspace import create_google_user
 from app.integrations.jumpcloud import create_jumpcloud_user
 from app.workflows.access_management import assign_department_access
 
@@ -44,7 +44,7 @@ def run_onboarding(employee):
         "google_workspace": google_result,
         "jumpcloud": jumpcloud_result,
         "access_management": access_result,
-        "status": "completed_with_errors"
+        "status": "completed"
     }
 
     write_audit("onboarding_workflow", "completed", result)

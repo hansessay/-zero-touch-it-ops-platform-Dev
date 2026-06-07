@@ -1,4 +1,4 @@
-.venv/
+41.venv/
 __pycache__/
 *.pyc
 .env
@@ -17,3 +17,8 @@ credentials/
 *.json
 credentials.txt
 test_gcp.py
+.env
+credentials/
+*.json
+
+.venv/
