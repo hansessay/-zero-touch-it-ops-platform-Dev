@@ -1,4 +1,5 @@
 from app.audit import write_audit
+from app.workflows.rbac import evaluate_rbac
 from app.integrations.google_workspace import create_google_user
 from app.integrations.jumpcloud import create_jumpcloud_user
 from app.workflows.access_management import assign_department_access
@@ -11,13 +12,13 @@ def run_onboarding(employee):
             first_name=employee.first_name,
             last_name=employee.last_name,
             email=employee.employee_email,
-            department=employee.department
+            department=employee.department,
         )
     except Exception as error:
         google_result = {
             "system": "Google Workspace",
             "status": "failed",
-            "error": str(error)
+            "error": str(error),
         }
 
     try:
@@ -25,18 +26,26 @@ def run_onboarding(employee):
             first_name=employee.first_name,
             last_name=employee.last_name,
             email=employee.employee_email,
-            department=employee.department
+            department=employee.department,
         )
     except Exception as error:
         jumpcloud_result = {
             "system": "JumpCloud",
             "status": "failed",
-            "error": str(error)
+            "error": str(error),
         }
 
+    # Department-based access assignment
     access_result = assign_department_access(
         user_email=employee.employee_email,
-        department=employee.department
+        department=employee.department,
+    )
+
+    # RBAC evaluation
+    rbac_result = evaluate_rbac(
+        user_email=employee.employee_email,
+        department=employee.department,
+        job_title=employee.job_title,
     )
 
     result = {
@@ -44,7 +53,8 @@ def run_onboarding(employee):
         "google_workspace": google_result,
         "jumpcloud": jumpcloud_result,
         "access_management": access_result,
-        "status": "completed"
+        "rbac": rbac_result,
+        "status": "completed",
     }
 
     write_audit("onboarding_workflow", "completed", result)
