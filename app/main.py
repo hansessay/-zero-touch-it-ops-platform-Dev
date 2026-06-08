@@ -11,7 +11,11 @@ from app.workflows.offboarding import run_offboarding
 from app.workflows.saas_governance import discover_saas_apps, license_governance
 from app.workflows.audit_readiness import generate_audit_report
 from app.workflows.tier3_remediation import remediate_device
-
+from app.integrations.sentinelone import (
+    get_agents,
+    check_agent_status,
+    isolate_device,
+)
 from app.integrations.google_workspace import (
     create_google_user,
     suspend_google_user,
@@ -304,3 +308,17 @@ def google_add_group_member_endpoint(request: GoogleGroupRequest):
 @app.get("/google/users")
 def google_list_users_endpoint(max_results: int = 50):
     return list_users(max_results=max_results)
+
+@app.get("/sentinelone/agents")
+def sentinelone_agents_endpoint():
+    return get_agents()
+
+
+@app.get("/sentinelone/agents/{hostname}")
+def sentinelone_agent_status_endpoint(hostname: str):
+    return check_agent_status(hostname)
+
+
+@app.post("/sentinelone/isolate/{hostname}")
+def sentinelone_isolate_device_endpoint(hostname: str):
+    return isolate_device(hostname)
