@@ -11,6 +11,12 @@ from app.workflows.offboarding import run_offboarding
 from app.workflows.saas_governance import discover_saas_apps, license_governance
 from app.workflows.audit_readiness import generate_audit_report
 from app.workflows.tier3_remediation import remediate_device
+
+from app.events.producer import (
+    start_kafka_producer,
+    stop_kafka_producer,
+    publish_event,
+)
 from app.integrations.sentinelone import (
     get_agents,
     check_agent_status,
@@ -33,6 +39,15 @@ app = FastAPI(
     title="Zero-Touch IT Operations Platform",
     version="0.1.0",
 )
+
+@app.on_event("startup")
+async def startup_event():
+    await start_kafka_producer()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await stop_kafka_producer()
 
 
 class OnboardingRequest(BaseModel):
@@ -110,10 +125,27 @@ def root():
 def health():
     return {"status": "healthy"}
 
-
 @app.post("/onboarding/start")
-def start_onboarding(request: OnboardingRequest):
-    return run_onboarding(request)
+async def start_onboarding(request: OnboardingRequest):
+    await publish_event(
+        "employee.onboarding.requested",
+        {
+            "event_type": "employee.onboarding.requested",
+            "employee_email": request.employee_email,
+            "first_name": request.first_name,
+            "last_name": request.last_name,
+            "department": request.department,
+            "job_title": request.job_title,
+            "manager_email": request.manager_email,
+            "location": request.location,
+        },
+    )
+
+    return {
+        "status": "success",
+        "message": "Onboarding event published to Kafka",
+        "employee_email": request.employee_email,
+    }
 
 
 @app.post("/offboarding/start")
