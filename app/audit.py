@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 
 audit_log = []
 
@@ -10,7 +11,12 @@ def write_audit(action: str, status: str, details: dict):
         "status": status,
         "details": details
     }
+
     audit_log.append(event)
+
+    with open("audit.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps(event) + "\n")
+
     return event
 
 

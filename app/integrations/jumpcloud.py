@@ -31,6 +31,7 @@ def _result(action, status_code, response, extra=None):
     data = {
         "system": "JumpCloud",
         "action": action,
+        "status": "success" if status_code in [200, 201, 204] else "failed",
         "status_code": status_code,
         "response": response,
     }
@@ -38,7 +39,9 @@ def _result(action, status_code, response, extra=None):
     if extra:
         data.update(extra)
 
-    write_audit(f"jumpcloud_{action}", "completed", data)
+    audit_status = "completed" if status_code in [200, 201, 204] else "failed"
+    write_audit(f"jumpcloud_{action}", audit_status, data)
+
     return data
 
 

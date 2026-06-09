@@ -3,6 +3,7 @@ from app.workflows.rbac import evaluate_rbac
 from app.integrations.google_workspace import create_google_user
 from app.integrations.jumpcloud import create_jumpcloud_user
 from app.workflows.access_management import assign_department_access
+from app.database import save_workflow_run
 
 
 def run_onboarding(employee):
@@ -56,7 +57,17 @@ def run_onboarding(employee):
         "rbac": rbac_result,
         "status": "completed",
     }
+    write_audit(
+        "onboarding_workflow",
+        "completed",
+        result,
+    )
 
-    write_audit("onboarding_workflow", "completed", result)
+    save_workflow_run(
+        workflow="onboarding",
+        employee_email=employee.employee_email,
+        status=result["status"],
+        result=result,
+    )
 
     return result
