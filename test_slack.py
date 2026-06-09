@@ -1,0 +1,10 @@
+from slack_sdk import WebClient
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+client = WebClient(token=os.getenv("JIRA_API_TOKEN=ATATT3xFfGF0nArcnG01T6stLbVufhnudGJz1oIZnEQj9KsAvbKlDhnpb5XKsU_QcmOBZSWPMioSwddOI-O8oLXKHqX-Um7xHiIX4NDqMxCPBU5dO_42v1_npdwMb_AUAz8_f07qNBj1YLuKWEZ9mmMjEUfbqR6M2g9YoLP2he2q0b4gcWRpF3o=BCF7C12A5xoxb-11301900466021-11299145515363-S3eV6jtuCjUOYrN1n14aurR7"))
+
+response = client.auth_test()
+print(response)

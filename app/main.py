@@ -106,6 +106,11 @@ def root():
 def health():
     return {"status": "healthy"}
 
+@app.get("/workflows/history")
+def workflows_history(limit: int = 50):
+    from app.database import get_workflow_history
+    return get_workflow_history(limit=limit)
+
 
 @app.post("/onboarding/start")
 def start_onboarding(request: OnboardingRequest):

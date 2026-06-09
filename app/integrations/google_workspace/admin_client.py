@@ -2,6 +2,7 @@ import os
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from app.audit import write_audit
 
 
 SCOPES = [
@@ -118,3 +119,55 @@ def add_user_to_group(
         "group_email": group_email,
         "status": "success",
     }
+
+def remove_user_from_all_groups(email: str):
+    service = get_directory_service()
+
+    groups_result = service.groups().list(
+        userKey=email
+    ).execute()
+
+    groups = groups_result.get("groups", [])
+
+    removed_groups = []
+
+    for group in groups:
+        group_email = group.get("email")
+
+        try:
+            service.members().delete(
+                groupKey=group_email,
+                memberKey=email,
+            ).execute()
+
+            removed_groups.append({
+                "group": group_email,
+                "status": "removed",
+            })
+
+        except Exception as error:
+            removed_groups.append({
+                "group": group_email,
+                "status": "failed",
+                "error": str(error),
+            })
+
+    result = {
+        "system": "Google Workspace",
+        "action": "remove_user_from_all_groups",
+        "email": email,
+        "removed_groups": removed_groups,
+        "groups_removed_count": len([
+            group for group in removed_groups
+            if group.get("status") == "removed"
+        ]),
+        "status": "success",
+    }
+
+    write_audit(
+        "google_remove_user_from_all_groups",
+        "success",
+        result,
+    )
+
+    return result
