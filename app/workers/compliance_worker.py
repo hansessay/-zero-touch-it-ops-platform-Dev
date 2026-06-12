@@ -1,59 +1,61 @@
 import time
+
 from app.audit import write_audit
-from app.integrations.jumpcloud import apply_policy
-from app.integrations.sentinelone import check_agent_status
+from app.integrations.jumpcloud import get_devices, apply_policy_real
+
+try:
+    from app.integrations.sentinelone import check_agent_status
+except ImportError:
+    def check_agent_status(hostname):
+        return {
+            "system": "SentinelOne",
+            "hostname": hostname,
+            "status": "unknown",
+            "reason": "check_agent_status_not_implemented",
+        }
 
 
 CHECK_INTERVAL_SECONDS = 3600
 
-
-DEVICES = [
-    {
-        "hostname": "LAPTOP-7UU6G70R",
-        "department": "Engineering",
-        "baseline": {
-            "disk_encryption": True,
-            "sentinelone_required": True,
-            "patch_policy": "Standard Patch Policy",
-        },
+BASELINE_BY_DEPARTMENT = {
+    "Engineering": {
+        "disk_encryption": True,
+        "sentinelone_required": True,
+        "patch_policy": "JC Standard Security - Allow The Use of Biometrics",
     }
-]
+}
+
+
+def get_department_for_device(device: dict) -> str:
+    return "Engineering"
 
 
 def check_device_compliance(device: dict):
-    hostname = device["hostname"]
-    department = device["department"]
-    baseline = device["baseline"]
+    hostname = device.get("hostname") or device.get("displayName")
+    department = get_department_for_device(device)
+    baseline = BASELINE_BY_DEPARTMENT.get(department, {})
 
     findings = []
     remediation_actions = []
 
     sentinelone_status = check_agent_status(hostname)
 
-    if baseline["sentinelone_required"]:
+    if baseline.get("sentinelone_required"):
         if sentinelone_status.get("status") != "protected":
             findings.append("SentinelOne agent not protected")
 
-    disk_encryption_enabled = False
+    disk_encryption_enabled = device.get("fde", {}).get("active") is True
 
-    if baseline["disk_encryption"] and not disk_encryption_enabled:
+    if baseline.get("disk_encryption") and not disk_encryption_enabled:
         findings.append("Disk encryption is disabled")
 
-        remediation = apply_policy(
-            policy_name="Disk Encryption Policy",
+    if baseline.get("patch_policy"):
+        remediation = apply_policy_real(
+            policy_name=baseline["patch_policy"],
             target_group=department,
-            policy_type="security",
+            policy_type="windows",
         )
-
         remediation_actions.append(remediation)
-
-    patch_remediation = apply_policy(
-        policy_name=baseline["patch_policy"],
-        target_group=department,
-        policy_type="patching",
-    )
-
-    remediation_actions.append(patch_remediation)
 
     status = "compliant" if not findings else "drift_detected"
 
@@ -63,11 +65,11 @@ def check_device_compliance(device: dict):
         "department": department,
         "status": status,
         "findings": findings,
+        "sentinelone_status": sentinelone_status,
         "remediation_actions": remediation_actions,
     }
 
     write_audit("compliance_worker", status, result)
-
     return result
 
 
@@ -75,7 +77,10 @@ def run_compliance_worker():
     print("Compliance worker started")
 
     while True:
-        for device in DEVICES:
+        devices_response = get_devices()
+        devices = devices_response.get("response", {}).get("results", [])
+
+        for device in devices:
             result = check_device_compliance(device)
             print(result)
 

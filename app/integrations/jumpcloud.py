@@ -45,6 +45,16 @@ def _result(action, status_code, response, extra=None):
     return data
 
 
+def _get_items(response_data):
+    if isinstance(response_data, list):
+        return response_data
+
+    if isinstance(response_data, dict):
+        return response_data.get("results", [])
+
+    return []
+
+
 def get_users():
     response = requests.get(
         f"{JUMPCLOUD_API_V1}/systemusers",
@@ -114,14 +124,10 @@ def suspend_user(email):
 
     user_id = user.get("_id") or user.get("id")
 
-    payload = {
-        "suspended": True,
-    }
-
     response = requests.put(
         f"{JUMPCLOUD_API_V1}/systemusers/{user_id}",
         headers=_headers(),
-        json=payload,
+        json={"suspended": True},
         timeout=30,
     )
 
@@ -202,109 +208,38 @@ def get_commands():
     return _result("get_commands", response.status_code, _parse_response(response))
 
 
-def run_command(command_name, target_group, script_type):
-    result = {
-        "system": "JumpCloud",
-        "action": "run_command",
-        "command_name": command_name,
-        "target_group": target_group,
-        "script_type": script_type,
-        "status": "api_ready_requires_command_id",
-    }
-
-    write_audit("jumpcloud_run_command", "completed", result)
-    return result
-
-
-def apply_policy(policy_name, target_group, policy_type):
-    result = {
-        "system": "JumpCloud",
-        "action": "apply_policy",
-        "policy_name": policy_name,
-        "target_group": target_group,
-        "policy_type": policy_type,
-        "status": "api_ready_requires_policy_id",
-    }
-
-    write_audit("jumpcloud_apply_policy", "completed", result)
-    return result
-
-def _get_items(response_data):
-    if isinstance(response_data, list):
-        return response_data
-
-    if isinstance(response_data, dict):
-        return response_data.get("results", [])
-
-    return []
-
-
-def find_policy_by_name(policy_name: str):
+def find_policy_by_name(policy_name):
     policies = get_policies()
     items = _get_items(policies.get("response"))
 
     for policy in items:
         name = policy.get("name") or policy.get("displayName")
+
         if name and name.lower() == policy_name.lower():
             return policy
 
     return None
 
 
-def find_device_group_by_name(group_name: str):
+def find_device_group_by_name(group_name):
     groups = get_device_groups()
     items = _get_items(groups.get("response"))
 
     for group in items:
         name = group.get("name") or group.get("displayName")
+
         if name and name.lower() == group_name.lower():
             return group
 
     return None
 
 
-def apply_policy_real(policy_name, target_group, policy_type):
-    policy = find_policy_by_name(policy_name)
-    group = find_device_group_by_name(target_group)
-
-    if not policy:
-        return {"system": "JumpCloud", "action": "apply_policy_real", "status": "failed", "reason": "policy_not_found"}
-
-    if not group:
-        return {"system": "JumpCloud", "action": "apply_policy_real", "status": "failed", "reason": "device_group_not_found"}
-
-    policy_id = policy.get("id") or policy.get("_id")
-    group_id = group.get("id") or group.get("_id")
-
+def add_user_to_group_by_id(user_id, user_group_id):
     payload = {
         "op": "add",
-        "type": "system_group",
-        "id": group_id,
+        "type": "user",
+        "id": user_id,
     }
-
-    response = requests.post(
-        f"{JUMPCLOUD_API_V2}/policies/{policy_id}/associations",
-        headers=_headers(),
-        json=payload,
-        timeout=30,
-    )
-
-    return _result(
-        "apply_policy_real",
-        response.status_code,
-        _parse_response(response),
-        {
-            "policy_name": policy_name,
-            "policy_id": policy_id,
-            "target_group": target_group,
-            "target_group_id": group_id,
-            "policy_type": policy_type,
-        },
-    )
-
-
-def add_user_to_group_by_id(user_id, user_group_id):
-    payload = {"op": "add", "type": "user", "id": user_id}
 
     response = requests.post(
         f"{JUMPCLOUD_API_V2}/usergroups/{user_group_id}/members",
@@ -322,7 +257,11 @@ def add_user_to_group_by_id(user_id, user_group_id):
 
 
 def add_device_to_group_by_id(device_id, device_group_id):
-    payload = {"op": "add", "type": "system", "id": device_id}
+    payload = {
+        "op": "add",
+        "type": "system",
+        "id": device_id,
+    }
 
     response = requests.post(
         f"{JUMPCLOUD_API_V2}/systemgroups/{device_group_id}/members",
@@ -337,3 +276,92 @@ def add_device_to_group_by_id(device_id, device_group_id):
         _parse_response(response),
         {"device_id": device_id, "device_group_id": device_group_id},
     )
+
+
+def apply_policy_real(policy_name, target_group, policy_type):
+    policy = find_policy_by_name(policy_name)
+    group = find_device_group_by_name(target_group)
+
+    if not policy:
+        return {
+            "system": "JumpCloud",
+            "action": "apply_policy_real",
+            "status": "failed",
+            "reason": "policy_not_found",
+            "policy_name": policy_name,
+        }
+
+    if not group:
+        return {
+            "system": "JumpCloud",
+            "action": "apply_policy_real",
+            "status": "failed",
+            "reason": "device_group_not_found",
+            "target_group": target_group,
+        }
+
+    policy_id = policy.get("id") or policy.get("_id")
+    group_id = group.get("id") or group.get("_id")
+
+    payload = {
+        "op": "add",
+        "type": "system_group",
+        "id": group_id,
+    }
+
+    response = requests.post(
+        f"{JUMPCLOUD_API_V2}/policies/{policy_id}/associations",
+        headers=_headers(),
+        json=payload,
+        timeout=30,
+    )
+
+    parsed_response = _parse_response(response)
+
+    if response.status_code == 409:
+        if isinstance(parsed_response, dict):
+            if parsed_response.get("message") == "Already Exists":
+                return _result(
+                    "apply_policy_real",
+                    200,
+                    parsed_response,
+                    {
+                        "policy_name": policy_name,
+                        "policy_id": policy_id,
+                        "target_group": target_group,
+                        "target_group_id": group_id,
+                        "policy_type": policy_type,
+                        "idempotent": True,
+                    },
+                )
+
+    return _result(
+        "apply_policy_real",
+        response.status_code,
+        parsed_response,
+        {
+            "policy_name": policy_name,
+            "policy_id": policy_id,
+            "target_group": target_group,
+            "target_group_id": group_id,
+            "policy_type": policy_type,
+        },
+    )
+
+
+def apply_policy(policy_name, target_group, policy_type):
+    return apply_policy_real(policy_name, target_group, policy_type)
+
+
+def run_command(command_name, target_group, script_type):
+    result = {
+        "system": "JumpCloud",
+        "action": "run_command",
+        "command_name": command_name,
+        "target_group": target_group,
+        "script_type": script_type,
+        "status": "api_ready_requires_command_id",
+    }
+
+    write_audit("jumpcloud_run_command", "completed", result)
+    return result
