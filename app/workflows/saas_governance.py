@@ -15,6 +15,13 @@ APPROVED_APPS = [
 ]
 
 
+def _is_approved_app(app_name: str) -> bool:
+    return app_name.lower() in [
+        approved_app.lower()
+        for approved_app in APPROVED_APPS
+    ]
+
+
 def _get_parameter(parameters, name):
     for parameter in parameters:
         if parameter.get("name") == name:
@@ -24,6 +31,7 @@ def _get_parameter(parameters, name):
 
 def _extract_oauth_apps(events):
     discovered_apps = []
+    seen_clients = set()
 
     for item in events:
         actor = item.get("actor", {}).get("email")
@@ -40,14 +48,21 @@ def _extract_oauth_apps(events):
             if not app_name:
                 continue
 
+            unique_key = client_id or app_name
+
+            if unique_key in seen_clients:
+                continue
+
+            seen_clients.add(unique_key)
+
             discovered_apps.append({
                 "name": app_name,
                 "client_id": client_id,
                 "actor": actor,
                 "ip_address": ip_address,
-                "event_time": event_time,
+                "first_seen": event_time,
                 "scopes": scopes,
-                "approved": app_name in APPROVED_APPS,
+                "approved": _is_approved_app(app_name),
                 "source": "google_workspace_token_audit",
             })
 

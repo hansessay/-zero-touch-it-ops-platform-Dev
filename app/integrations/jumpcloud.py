@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import requests
 
@@ -349,19 +352,72 @@ def apply_policy_real(policy_name, target_group, policy_type):
     )
 
 
+
+
 def apply_policy(policy_name, target_group, policy_type):
     return apply_policy_real(policy_name, target_group, policy_type)
 
 
+def find_command_by_name(command_name):
+    commands = get_commands()
+    items = _get_items(commands.get("response"))
+
+    for command in items:
+        name = command.get("name") or command.get("displayName")
+
+        if name and name.lower() == command_name.lower():
+            return command
+
+    return None
+
+
 def run_command(command_name, target_group, script_type):
-    result = {
-        "system": "JumpCloud",
-        "action": "run_command",
-        "command_name": command_name,
-        "target_group": target_group,
-        "script_type": script_type,
-        "status": "api_ready_requires_command_id",
+    command = find_command_by_name(command_name)
+    group = find_device_group_by_name(target_group)
+
+    if not command:
+        return {
+            "system": "JumpCloud",
+            "action": "run_command",
+            "status": "failed",
+            "reason": "command_not_found",
+            "command_name": command_name,
+        }
+
+    if not group:
+        return {
+            "system": "JumpCloud",
+            "action": "run_command",
+            "status": "failed",
+            "reason": "device_group_not_found",
+            "target_group": target_group,
+        }
+
+    command_id = command.get("id") or command.get("_id")
+    group_id = group.get("id") or group.get("_id")
+
+    payload = {
+        "op": "add",
+        "type": "system_group",
+        "id": group_id,
     }
 
-    write_audit("jumpcloud_run_command", "completed", result)
-    return result
+    response = requests.post(
+        f"{JUMPCLOUD_API_V2}/commands/{command_id}/associations",
+        headers=_headers(),
+        json=payload,
+        timeout=30,
+    )
+
+    return _result(
+        "run_command",
+        response.status_code,
+        _parse_response(response),
+        {
+            "command_name": command_name,
+            "command_id": command_id,
+            "target_group": target_group,
+            "target_group_id": group_id,
+            "script_type": script_type,
+        },
+    )

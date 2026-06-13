@@ -1,138 +1,93 @@
 from app.audit import write_audit
-from app.integrations.jumpcloud import run_command
+from app.integrations.jumpcloud import (
+    find_device_by_hostname,
+    apply_policy_real,
+)
 
 
-DESIRED_STATE = {
-    "bitlocker_enabled": True,
-    "sentinelone_installed": True,
-    "firewall_enabled": True,
-    "screen_lock_enabled": True,
-    "os_supported": True,
+BASELINES = {
+    "Engineering": {
+        "required_os": "Windows",
+        "disk_encryption_required": True,
+        "policy_name": "JC Standard Security - Allow The Use of Biometrics",
+        "target_group": "Engineering",
+        "policy_type": "windows",
+    }
 }
 
 
-def get_desired_state():
-    result = {
-        "workflow": "desired_state_baseline",
-        "desired_state": DESIRED_STATE,
-        "status": "completed",
-    }
+def check_device_posture(hostname: str, department: str = "Engineering"):
+    device = find_device_by_hostname(hostname)
+    baseline = BASELINES.get(department)
 
-    write_audit("desired_state_baseline", "completed", result)
-    return result
+    if not device:
+        return {
+            "workflow": "posture_management",
+            "hostname": hostname,
+            "status": "device_not_found",
+        }
 
+    findings = []
 
-def check_device_posture(hostname: str):
-    # Simulated device state for demo
-    current_state = {
-        "bitlocker_enabled": True,
-        "sentinelone_installed": True,
-        "firewall_enabled": True,
-        "screen_lock_enabled": True,
-        "os_supported": True,
-    }
+    os_name = device.get("os")
+    encryption_enabled = device.get("fde", {}).get("active") is True
+    policy_bound = device.get("isPolicyBound") is True
 
-    drift = {}
+    if baseline["required_os"] not in os_name:
+        findings.append("Operating system does not match baseline")
 
-    for control, expected_value in DESIRED_STATE.items():
-        actual_value = current_state.get(control)
+    if baseline["disk_encryption_required"] and not encryption_enabled:
+        findings.append("Disk encryption is not enabled")
 
-        if actual_value != expected_value:
-            drift[control] = {
-                "expected": expected_value,
-                "actual": actual_value,
-            }
+    if not policy_bound:
+        findings.append("Device is not policy bound")
 
-    compliant = len(drift) == 0
-    score = int(
-        ((len(DESIRED_STATE) - len(drift)) / len(DESIRED_STATE)) * 100
-    )
+    status = "compliant" if not findings else "drift_detected"
 
     result = {
-        "workflow": "check_device_posture",
+        "workflow": "posture_management",
         "hostname": hostname,
-        "desired_state": DESIRED_STATE,
-        "current_state": current_state,
-        "drift": drift,
-        "compliant": compliant,
-        "compliance_score": score,
-        "status": "completed",
+        "department": department,
+        "status": status,
+        "findings": findings,
+        "actual_state": {
+            "os": os_name,
+            "disk_encryption_enabled": encryption_enabled,
+            "policy_bound": policy_bound,
+        },
+        "desired_state": baseline,
     }
 
-    write_audit("check_device_posture", "completed", result)
+    write_audit("posture_check", status, result)
     return result
 
 
-def remediate_device_posture(hostname: str):
-    posture = check_device_posture(hostname)
-    drift = posture["drift"]
+def remediate_device_posture(hostname: str, department: str = "Engineering"):
+    posture = check_device_posture(hostname, department)
+    baseline = BASELINES.get(department)
 
     remediation_actions = []
 
-    if not drift:
-        result = {
-            "workflow": "remediate_device_posture",
-            "hostname": hostname,
-            "message": "Device is already compliant. No remediation required.",
-            "status": "completed",
-        }
+    if posture.get("status") == "device_not_found":
+        return posture
 
-        write_audit("remediate_device_posture", "completed", result)
-        return result
-
-    for control in drift.keys():
-        if control == "firewall_enabled":
-            remediation_actions.append(
-                run_command(
-                    command_name="Enable Windows Firewall",
-                    target_group=hostname,
-                    script_type="powershell",
-                )
-            )
-
-        elif control == "bitlocker_enabled":
-            remediation_actions.append(
-                run_command(
-                    command_name="Enable BitLocker",
-                    target_group=hostname,
-                    script_type="powershell",
-                )
-            )
-
-        elif control == "screen_lock_enabled":
-            remediation_actions.append(
-                run_command(
-                    command_name="Enforce Screen Lock Policy",
-                    target_group=hostname,
-                    script_type="powershell",
-                )
-            )
-
-        elif control == "sentinelone_installed":
-            remediation_actions.append(
-                {
-                    "system": "SentinelOne",
-                    "action": "install_agent",
-                    "hostname": hostname,
-                    "status": "manual_review_required",
-                }
-            )
-
-        else:
-            remediation_actions.append(
-                {
-                    "control": control,
-                    "status": "manual_review_required",
-                }
-            )
+    if posture.get("status") == "drift_detected":
+        remediation = apply_policy_real(
+            policy_name=baseline["policy_name"],
+            target_group=baseline["target_group"],
+            policy_type=baseline["policy_type"],
+        )
+        remediation_actions.append(remediation)
 
     result = {
-        "workflow": "remediate_device_posture",
+        "workflow": "posture_remediation",
         "hostname": hostname,
-        "drift_detected": drift,
+        "department": department,
+        "posture_status": posture.get("status"),
+        "findings": posture.get("findings", []),
         "remediation_actions": remediation_actions,
         "status": "completed",
     }
 
-    write_audit("remediate_device_posture", "completed", result)
+    write_audit("posture_remediation", "completed", result)
     return result

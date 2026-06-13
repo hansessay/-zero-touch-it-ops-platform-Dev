@@ -11,13 +11,14 @@ st.set_page_config(
 
 st.title("Zero-Touch IT Operations Platform")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     [
         "HR Onboarding Portal",
         "HR Offboarding Portal",
         "Fleet Reliability & Compliance",
         "Observability & Data Integrity",
         "Tier 3 Escalation & SOPs",
+        "JumpCloud Automation",
     ]
 )
 
@@ -297,3 +298,91 @@ with tab5:
             st.json(response.json())
         else:
             st.error(response.text)
+
+
+with tab6:
+    st.header("JumpCloud Automation")
+
+    st.subheader("Policy Automation")
+
+    policy_name = st.selectbox(
+    "JumpCloud Policy",
+    [
+        "JC Standard Security - BitLocker Full Disk Encryption",
+        "JC Standard Security - Allow The Use of Biometrics",
+        "JC Standard Security - Allow Activation Lock",
+    ],
+)
+
+    target_group = st.text_input(
+        "Target Device Group",
+        value="Engineering",
+    )
+
+    policy_type = st.selectbox(
+        "Policy Type",
+        [
+            "security_baseline",
+            "patching",
+            "disk_encryption",
+            "firewall",
+            "password_policy",
+        ],
+    )
+
+    if st.button("Apply JumpCloud Policy"):
+        payload = {
+            "policy_name": policy_name,
+            "target_group": target_group,
+            "policy_type": policy_type,
+        }
+
+        response = requests.post(
+            f"{API_URL}/jumpcloud/policies/apply",
+            json=payload,
+        )
+
+        if response.status_code == 200:
+            st.success("JumpCloud policy automation executed")
+            st.json(response.json())
+        else:
+            st.error("JumpCloud policy automation failed")
+            st.write(response.text)
+
+    st.divider()
+
+    st.subheader("Command Automation")
+
+    command_name = st.text_input(
+        "JumpCloud Command Name",
+        value="Re-enable Firewall",
+    )
+
+    command_target_group = st.text_input(
+        "Command Target Device Group",
+        value="Engineering",
+    )
+
+    script_type = st.selectbox(
+        "Command Script Type",
+        ["powershell", "bash"],
+    )
+
+    if st.button("Run JumpCloud Command"):
+        payload = {
+            "command_name": command_name,
+            "target_group": command_target_group,
+            "script_type": script_type,
+        }
+
+        response = requests.post(
+            f"{API_URL}/jumpcloud/commands/run",
+            json=payload,
+        )
+
+        if response.status_code == 200:
+            st.success("JumpCloud command automation executed")
+            st.json(response.json())
+        else:
+            st.error("JumpCloud command automation failed")
+            st.write(response.text)
