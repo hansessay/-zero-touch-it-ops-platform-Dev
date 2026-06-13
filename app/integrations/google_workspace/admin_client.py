@@ -30,9 +30,37 @@ def get_directory_service():
     )
 
 
+def get_reports_service():
+    service_account_file = os.environ["GOOGLE_SERVICE_ACCOUNT_FILE"]
+    delegated_admin = os.environ["GOOGLE_WORKSPACE_ADMIN"]
+
+    scopes = [
+        "https://www.googleapis.com/auth/admin.reports.audit.readonly",
+    ]
+
+    credentials = service_account.Credentials.from_service_account_file(
+        service_account_file,
+        scopes=scopes,
+    )
+
+    delegated_credentials = credentials.with_subject(delegated_admin)
+
+    return build("admin", "reports_v1", credentials=delegated_credentials)
+
+def list_oauth_token_events(max_results: int = 50):
+    service = get_reports_service()
+
+    result = service.activities().list(
+        userKey="all",
+        applicationName="token",
+        maxResults=max_results,
+    ).execute()
+
+    return result.get("items", [])
+
+
 def list_users(max_results: int = 10):
     service = get_directory_service()
-
     result = service.users().list(
         customer="my_customer",
         maxResults=max_results,
