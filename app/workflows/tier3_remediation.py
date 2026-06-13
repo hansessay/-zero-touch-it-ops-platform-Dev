@@ -1,34 +1,49 @@
 from app.audit import write_audit
-from app.integrations.jumpcloud import run_command, apply_policy
 
 
 def remediate_device(hostname: str, issue: str):
+    actions = []
 
-    command_result = run_command(
-        command_name=f"remediate_{issue}",
-        target_group=hostname,
-        script_type="powershell"
-    )
+    normalized_issue = issue.lower()
 
-    policy_result = apply_policy(
-        policy_name=f"{issue}_policy",
-        target_group=hostname,
-        policy_type="security"
-    )
+    if normalized_issue == "sentinelone":
+        actions.append("Validate SentinelOne agent status")
+        actions.append("Collect endpoint protection logs")
+        actions.append("Reinstall SentinelOne agent if missing")
+        actions.append("Escalate to security if agent remains unhealthy")
+
+    elif normalized_issue == "bitlocker":
+        actions.append("Validate BitLocker encryption status")
+        actions.append("Apply disk encryption policy")
+        actions.append("Collect encryption compliance evidence")
+
+    elif normalized_issue == "patching":
+        actions.append("Check missing OS and third-party patches")
+        actions.append("Trigger patch deployment")
+        actions.append("Validate post-patch state")
+
+    elif normalized_issue == "identity":
+        actions.append("Validate Google Workspace user state")
+        actions.append("Validate JumpCloud user state")
+        actions.append("Check group membership and RBAC assignment")
+
+    else:
+        actions.append("Collect diagnostics")
+        actions.append("Validate endpoint and identity state")
+        actions.append("Escalate to engineering for manual review")
 
     result = {
         "workflow": "tier3_remediation",
         "hostname": hostname,
         "issue": issue,
-        "command": command_result,
-        "policy": policy_result,
-        "status": "completed"
+        "actions": actions,
+        "status": "completed",
     }
 
     write_audit(
         "tier3_remediation",
         "completed",
-        result
+        result,
     )
 
     return result

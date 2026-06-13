@@ -11,6 +11,10 @@ from app.workflows.offboarding import run_offboarding
 from app.workflows.saas_governance import discover_saas_apps, license_governance
 from app.workflows.audit_readiness import generate_audit_report
 from app.workflows.tier3_remediation import remediate_device
+from app.integrations.jumpcloud import apply_policy, run_command
+from app.workflows.telemetry import get_fleet_telemetry
+from app.workflows.pdf_export import export_telemetry_pdf
+
 
 from app.integrations.google_workspace import (
     create_google_user,
@@ -18,10 +22,14 @@ from app.integrations.google_workspace import (
     add_user_to_group,
     list_users,
 )
-
 from app.workflows.compliance import (
     fleet_compliance,
     identity_compliance,
+)
+
+from app.workflows.posture_management import (
+    check_device_posture,
+    remediate_device_posture,
 )
 
 
@@ -75,6 +83,16 @@ class SOPRunRequest(BaseModel):
     affected_user: str
     affected_device: str
 
+class JumpCloudPolicyRequest(BaseModel):
+    policy_name: str
+    target_group: str
+    policy_type: str = "security_baseline"
+
+
+class JumpCloudCommandRequest(BaseModel):
+    command_name: str
+    target_group: str
+    script_type: str = "powershell"
 
 class EndpointRemediationRequest(BaseModel):
     hostname: str
@@ -142,36 +160,12 @@ def run_patch_workflow(request: FleetPatchingRequest):
 
 @app.post("/fleet/posture/check")
 def check_posture(request: PostureCheckRequest):
-    return {
-        "status": "success",
-        "message": "Posture check completed",
-        "hostname": request.hostname,
-        "baseline": request.baseline,
-        "compliance_status": "drift_detected",
-        "findings": [
-            "Disk encryption not verified",
-            "Patch level requires review",
-            "Endpoint protection status needs validation",
-        ],
-    }
+    return check_device_posture(request.hostname)
 
 
 @app.post("/fleet/posture/remediate")
 def remediate_posture(request: PostureCheckRequest):
-    return {
-        "status": "success",
-        "message": "Remediation workflow started",
-        "hostname": request.hostname,
-        "baseline": request.baseline,
-        "remediation_actions": [
-            "Enable disk encryption policy",
-            "Schedule patch update",
-            "Validate endpoint protection agent",
-            "Re-check desired security baseline",
-            "Write remediation audit log",
-        ],
-    }
-
+    return remediate_device_posture(request.hostname)
 
 @app.post("/fleet/audit/evidence")
 def generate_audit_evidence(request: AuditEvidenceRequest):
@@ -196,23 +190,6 @@ def generate_audit_evidence(request: AuditEvidenceRequest):
     }
 
 
-@app.get("/observability/telemetry")
-def get_telemetry():
-    return {
-        "status": "success",
-        "fleet_health": {
-            "total_devices": 120,
-            "healthy_devices": 104,
-            "at_risk_devices": 16,
-        },
-        "security_agent_coverage": "94%",
-        "system_uptime": "99.95%",
-        "leadership_summary": [
-            "Fleet health is stable",
-            "Security coverage requires improvement",
-            "Patch compliance trending upward",
-        ],
-    }
 
 
 @app.post("/tier3/escalation")
@@ -309,3 +286,29 @@ def google_add_group_member_endpoint(request: GoogleGroupRequest):
 @app.get("/google/users")
 def google_list_users_endpoint(max_results: int = 50):
     return list_users(max_results=max_results)
+
+@app.post("/jumpcloud/policies/apply")
+def apply_jumpcloud_policy(request: JumpCloudPolicyRequest):
+    return apply_policy(
+        request.policy_name,
+        request.target_group,
+        request.policy_type,
+    )
+
+
+@app.post("/jumpcloud/commands/run")
+def run_jumpcloud_command(request: JumpCloudCommandRequest):
+    return run_command(
+        request.command_name,
+        request.target_group,
+        request.script_type,
+    )
+
+@app.get("/observability/telemetry")
+def observability_telemetry():
+    return get_fleet_telemetry()
+
+@app.get("/observability/telemetry/export-pdf")
+def export_telemetry_pdf_report():
+    telemetry = get_fleet_telemetry()
+    return export_telemetry_pdf(telemetry)
