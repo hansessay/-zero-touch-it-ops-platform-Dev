@@ -1,17 +1,20 @@
 from app.audit import write_audit
 from app.integrations.google_workspace.admin_client import list_oauth_token_events
-
-
 APPROVED_APPS = [
     "Google Chrome",
     "JumpCloud",
     "GAM",
+    "Gam",
     "Google Workspace",
     "Slack",
     "GitHub",
     "Jira",
     "Confluence",
     "SentinelOne",
+    "Atlassian",
+    "JetBrains Single Sign-on (Hub)",
+    "Google Cloud Shell",
+    "GAM Project Creation",
 ]
 
 

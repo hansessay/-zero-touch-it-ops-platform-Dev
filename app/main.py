@@ -15,6 +15,11 @@ from app.integrations.jumpcloud import apply_policy, run_command
 from app.workflows.telemetry import get_fleet_telemetry
 from app.workflows.pdf_export import export_telemetry_pdf
 
+from app.workflows.software_requests import (
+    request_software_install,
+    approve_software_install,
+)
+
 
 from app.integrations.google_workspace import (
     create_google_user,
@@ -38,6 +43,20 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
+class SoftwareInstallRequest(BaseModel):
+    user_email: str
+    hostname: str
+    software_name: str
+    business_reason: str
+    manager_email: str
+
+
+class SoftwareInstallApprovalRequest(BaseModel):
+    user_email: str
+    hostname: str
+    software_name: str
+    approved_by: str
 
 class OnboardingRequest(BaseModel):
     first_name: str
@@ -312,3 +331,24 @@ def observability_telemetry():
 def export_telemetry_pdf_report():
     telemetry = get_fleet_telemetry()
     return export_telemetry_pdf(telemetry)
+
+
+@app.post("/software/install/request")
+def submit_software_install_request(request: SoftwareInstallRequest):
+    return request_software_install(
+        user_email=request.user_email,
+        hostname=request.hostname,
+        software_name=request.software_name,
+        business_reason=request.business_reason,
+        manager_email=request.manager_email,
+    )
+
+
+@app.post("/software/install/approve")
+def approve_software_install_request(request: SoftwareInstallApprovalRequest):
+    return approve_software_install(
+        user_email=request.user_email,
+        hostname=request.hostname,
+        software_name=request.software_name,
+        approved_by=request.approved_by,
+    )
