@@ -150,6 +150,35 @@ def isolate_endpoint(agent_id: str):
     return result
 
 
+def check_agent_status(hostname: str):
+    agents = get_agents(limit=100)
+
+    result = {
+        "system": "SentinelOne",
+        "action": "check_agent_status",
+        "hostname": hostname,
+        "status": "completed",
+        "message": "Agent status lookup executed. Review SentinelOne response for matching hostname.",
+        "agents": agents,
+    }
+
+    write_audit("sentinelone_check_agent_status", "completed", result)
+    return result
+
+
+def isolate_device(hostname: str):
+    result = {
+        "system": "SentinelOne",
+        "action": "isolate_device",
+        "hostname": hostname,
+        "status": "requires_agent_id",
+        "message": "Use SentinelOne agent inventory to map hostname to agent_id, then call isolate_endpoint(agent_id).",
+    }
+
+    write_audit("sentinelone_isolate_device", "requires_approval", result)
+    return result
+
+
 def endpoint_protection_summary():
     agents = get_agents()
     threats = get_threats()

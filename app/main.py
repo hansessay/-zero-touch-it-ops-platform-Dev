@@ -21,6 +21,16 @@ from app.workflows.software_requests import (
 )
 
 
+from app.events.producer import (
+    start_kafka_producer,
+    stop_kafka_producer,
+    publish_event,
+)
+from app.integrations.sentinelone import (
+    get_agents,
+    check_agent_status,
+    isolate_device,
+)
 from app.integrations.google_workspace import (
     create_google_user,
     suspend_google_user,
@@ -42,6 +52,15 @@ app = FastAPI(
     title="Zero-Touch IT Operations Platform",
     version="0.1.0",
 )
+
+@app.on_event("startup")
+async def startup_event():
+    await start_kafka_producer()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await stop_kafka_producer()
 
 
 class SoftwareInstallRequest(BaseModel):
@@ -143,15 +162,28 @@ def root():
 def health():
     return {"status": "healthy"}
 
-@app.get("/workflows/history")
-def workflows_history(limit: int = 50):
-    from app.database import get_workflow_history
-    return get_workflow_history(limit=limit)
-
 
 @app.post("/onboarding/start")
-def start_onboarding(request: OnboardingRequest):
-    return run_onboarding(request)
+async def start_onboarding(request: OnboardingRequest):
+    await publish_event(
+        "employee.onboarding.requested",
+        {
+            "event_type": "employee.onboarding.requested",
+            "employee_email": request.employee_email,
+            "first_name": request.first_name,
+            "last_name": request.last_name,
+            "department": request.department,
+            "job_title": request.job_title,
+            "manager_email": request.manager_email,
+            "location": request.location,
+        },
+    )
+
+    return {
+        "status": "success",
+        "message": "Onboarding event published to Kafka",
+        "employee_email": request.employee_email,
+    }
 
 
 @app.post("/offboarding/start")
@@ -323,9 +355,11 @@ def run_jumpcloud_command(request: JumpCloudCommandRequest):
         request.script_type,
     )
 
+
 @app.get("/observability/telemetry")
 def observability_telemetry():
     return get_fleet_telemetry()
+
 
 @app.get("/observability/telemetry/export-pdf")
 def export_telemetry_pdf_report():
@@ -352,3 +386,19 @@ def approve_software_install_request(request: SoftwareInstallApprovalRequest):
         software_name=request.software_name,
         approved_by=request.approved_by,
     )
+
+
+@app.get("/sentinelone/agents")
+def sentinelone_agents_endpoint():
+    return get_agents()
+
+
+@app.get("/sentinelone/agents/{hostname}")
+def sentinelone_agent_status_endpoint(hostname: str):
+    return check_agent_status(hostname)
+
+
+@app.post("/sentinelone/isolate/{hostname}")
+def sentinelone_isolate_device_endpoint(hostname: str):
+    return isolate_device(hostname)
+
