@@ -1,8 +1,7 @@
-
-
 from dotenv import load_dotenv
 
 load_dotenv()
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -11,40 +10,41 @@ from app.workflows.offboarding import run_offboarding
 from app.workflows.saas_governance import discover_saas_apps, license_governance
 from app.workflows.audit_readiness import generate_audit_report
 from app.workflows.tier3_remediation import remediate_device
-from app.integrations.jumpcloud import apply_policy, run_command
 from app.workflows.telemetry import get_fleet_telemetry
 from app.workflows.pdf_export import export_telemetry_pdf
-
 from app.workflows.software_requests import (
     request_software_install,
     approve_software_install,
 )
-
-
-from app.events.producer import (
-    start_kafka_producer,
-    stop_kafka_producer,
-    publish_event,
+from app.workflows.compliance import (
+    fleet_compliance,
+    identity_compliance,
 )
-from app.integrations.sentinelone import (
-    get_agents,
-    check_agent_status,
-    isolate_device,
+from app.workflows.posture_management import (
+    check_device_posture,
+    remediate_device_posture,
 )
+
+from app.integrations.jumpcloud import apply_policy, run_command
 from app.integrations.google_workspace import (
     create_google_user,
     suspend_google_user,
     add_user_to_group,
     list_users,
 )
-from app.workflows.compliance import (
-    fleet_compliance,
-    identity_compliance,
+from app.integrations.sentinelone import (
+    get_agents,
+    get_threats,
+    get_activities,
+    check_agent_status,
+    isolate_device,
+    endpoint_protection_summary,
 )
 
-from app.workflows.posture_management import (
-    check_device_posture,
-    remediate_device_posture,
+from app.events.producer import (
+    start_kafka_producer,
+    stop_kafka_producer,
+    publish_event,
 )
 
 
@@ -52,6 +52,7 @@ app = FastAPI(
     title="Zero-Touch IT Operations Platform",
     version="0.1.0",
 )
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -76,6 +77,7 @@ class SoftwareInstallApprovalRequest(BaseModel):
     hostname: str
     software_name: str
     approved_by: str
+
 
 class OnboardingRequest(BaseModel):
     first_name: str
@@ -121,6 +123,7 @@ class SOPRunRequest(BaseModel):
     affected_user: str
     affected_device: str
 
+
 class JumpCloudPolicyRequest(BaseModel):
     policy_name: str
     target_group: str
@@ -131,6 +134,7 @@ class JumpCloudCommandRequest(BaseModel):
     command_name: str
     target_group: str
     script_type: str = "powershell"
+
 
 class EndpointRemediationRequest(BaseModel):
     hostname: str
@@ -218,6 +222,7 @@ def check_posture(request: PostureCheckRequest):
 def remediate_posture(request: PostureCheckRequest):
     return remediate_device_posture(request.hostname)
 
+
 @app.post("/fleet/audit/evidence")
 def generate_audit_evidence(request: AuditEvidenceRequest):
     return {
@@ -239,8 +244,6 @@ def generate_audit_evidence(request: AuditEvidenceRequest):
             "Workflow logs attached for auditor review",
         ],
     }
-
-
 
 
 @app.post("/tier3/escalation")
@@ -338,6 +341,7 @@ def google_add_group_member_endpoint(request: GoogleGroupRequest):
 def google_list_users_endpoint(max_results: int = 50):
     return list_users(max_results=max_results)
 
+
 @app.post("/jumpcloud/policies/apply")
 def apply_jumpcloud_policy(request: JumpCloudPolicyRequest):
     return apply_policy(
@@ -389,16 +393,30 @@ def approve_software_install_request(request: SoftwareInstallApprovalRequest):
 
 
 @app.get("/sentinelone/agents")
-def sentinelone_agents_endpoint():
+def sentinelone_agents():
     return get_agents()
 
 
+@app.get("/sentinelone/threats")
+def sentinelone_threats():
+    return get_threats()
+
+
+@app.get("/sentinelone/activities")
+def sentinelone_activities():
+    return get_activities()
+
+
+@app.get("/sentinelone/summary")
+def sentinelone_summary():
+    return endpoint_protection_summary()
+
+
 @app.get("/sentinelone/agents/{hostname}")
-def sentinelone_agent_status_endpoint(hostname: str):
+def sentinelone_agent_status(hostname: str):
     return check_agent_status(hostname)
 
 
 @app.post("/sentinelone/isolate/{hostname}")
-def sentinelone_isolate_device_endpoint(hostname: str):
+def sentinelone_isolate(hostname: str):
     return isolate_device(hostname)
-

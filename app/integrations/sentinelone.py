@@ -38,116 +38,94 @@ def _not_configured(action):
         "system": "SentinelOne",
         "action": action,
         "status": "not_configured",
-        "message": "Set SENTINELONE_BASE_URL and SENTINELONE_API_TOKEN in .env to enable real SentinelOne API calls.",
+        "message": (
+            "Set SENTINELONE_BASE_URL and SENTINELONE_API_TOKEN "
+            "in .env to enable real SentinelOne API calls."
+        ),
     }
 
     write_audit(f"sentinelone_{action}", "skipped", result)
     return result
 
 
-def get_agents(limit: int = 50):
+def _request(method, endpoint, action, params=None, json=None):
     base_url = _base_url()
     headers = _headers()
 
     if not base_url or not headers:
-        return _not_configured("get_agents")
+        return _not_configured(action)
 
-    response = requests.get(
-        f"{base_url}/agents",
-        headers=headers,
+    try:
+        response = requests.request(
+            method=method,
+            url=f"{base_url}{endpoint}",
+            headers=headers,
+            params=params,
+            json=json,
+            timeout=30,
+        )
+
+        result = {
+            "system": "SentinelOne",
+            "action": action,
+            "status": "completed" if response.ok else "failed",
+            "status_code": response.status_code,
+            "response": _parse_response(response),
+        }
+
+        write_audit(f"sentinelone_{action}", result["status"], result)
+        return result
+
+    except requests.exceptions.RequestException as e:
+        result = {
+            "system": "SentinelOne",
+            "action": action,
+            "status": "error",
+            "message": str(e),
+        }
+
+        write_audit(f"sentinelone_{action}", "error", result)
+        return result
+
+
+def get_agents(limit: int = 50):
+    return _request(
+        method="GET",
+        endpoint="/agents",
+        action="get_agents",
         params={"limit": limit},
-        timeout=30,
     )
-
-    result = {
-        "system": "SentinelOne",
-        "action": "get_agents",
-        "status_code": response.status_code,
-        "response": _parse_response(response),
-    }
-
-    write_audit("sentinelone_get_agents", "completed", result)
-    return result
 
 
 def get_threats(limit: int = 50):
-    base_url = _base_url()
-    headers = _headers()
-
-    if not base_url or not headers:
-        return _not_configured("get_threats")
-
-    response = requests.get(
-        f"{base_url}/threats",
-        headers=headers,
+    return _request(
+        method="GET",
+        endpoint="/threats",
+        action="get_threats",
         params={"limit": limit},
-        timeout=30,
     )
-
-    result = {
-        "system": "SentinelOne",
-        "action": "get_threats",
-        "status_code": response.status_code,
-        "response": _parse_response(response),
-    }
-
-    write_audit("sentinelone_get_threats", "completed", result)
-    return result
 
 
 def get_activities(limit: int = 50):
-    base_url = _base_url()
-    headers = _headers()
-
-    if not base_url or not headers:
-        return _not_configured("get_activities")
-
-    response = requests.get(
-        f"{base_url}/activities",
-        headers=headers,
+    return _request(
+        method="GET",
+        endpoint="/activities",
+        action="get_activities",
         params={"limit": limit},
-        timeout=30,
     )
-
-    result = {
-        "system": "SentinelOne",
-        "action": "get_activities",
-        "status_code": response.status_code,
-        "response": _parse_response(response),
-    }
-
-    write_audit("sentinelone_get_activities", "completed", result)
-    return result
 
 
 def isolate_endpoint(agent_id: str):
-    base_url = _base_url()
-    headers = _headers()
-
-    if not base_url or not headers:
-        return _not_configured("isolate_endpoint")
-
-    response = requests.post(
-        f"{base_url}/agents/actions/disconnect",
-        headers=headers,
+    return _request(
+        method="POST",
+        endpoint="/agents/actions/disconnect",
+        action="isolate_endpoint",
         json={
             "filter": {
-                "ids": [agent_id]
+                "ids": [agent_id],
             }
         },
-        timeout=30,
     )
-
-    result = {
-        "system": "SentinelOne",
-        "action": "isolate_endpoint",
-        "agent_id": agent_id,
-        "status_code": response.status_code,
-        "response": _parse_response(response),
-    }
-
-    write_audit("sentinelone_isolate_endpoint", "completed", result)
-    return result
 
 
 def check_agent_status(hostname: str):
@@ -158,7 +136,10 @@ def check_agent_status(hostname: str):
         "action": "check_agent_status",
         "hostname": hostname,
         "status": "completed",
-        "message": "Agent status lookup executed. Review SentinelOne response for matching hostname.",
+        "message": (
+            "Agent inventory lookup executed. Review the SentinelOne "
+            "response and match hostname to agent_id."
+        ),
         "agents": agents,
     }
 
@@ -172,7 +153,11 @@ def isolate_device(hostname: str):
         "action": "isolate_device",
         "hostname": hostname,
         "status": "requires_agent_id",
-        "message": "Use SentinelOne agent inventory to map hostname to agent_id, then call isolate_endpoint(agent_id).",
+        "message": (
+            "Safe guardrail applied. Hostname isolation requires mapping "
+            "the hostname to a SentinelOne agent_id first. Then call "
+            "isolate_endpoint(agent_id)."
+        ),
     }
 
     write_audit("sentinelone_isolate_device", "requires_approval", result)
@@ -182,18 +167,26 @@ def isolate_device(hostname: str):
 def endpoint_protection_summary():
     agents = get_agents()
     threats = get_threats()
+    activities = get_activities()
 
     result = {
         "workflow": "sentinelone_endpoint_protection_summary",
+        "status": "completed",
+        "summary": {
+            "agent_inventory_checked": True,
+            "threats_checked": True,
+            "activities_checked": True,
+            "mode": "live_api" if os.getenv("SENTINELONE_API_TOKEN") else "not_configured",
+        },
         "agents": agents,
         "threats": threats,
-        "status": "completed",
+        "activities": activities,
     }
 
     write_audit(
         "sentinelone_endpoint_protection_summary",
         "completed",
-        result
+        result,
     )
 
     return result
